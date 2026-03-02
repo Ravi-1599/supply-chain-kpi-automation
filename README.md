@@ -1,276 +1,82 @@
-AI-Powered Supply Chain KPI Monitoring & Automation System
-PostgreSQL • NeonDB • SQL • n8n • Automated Executive Reporting
-Project Overview
+# AI-Powered Supply Chain KPI Automation
 
-This project builds an end-to-end Supply Chain KPI Monitoring & Automated Reporting System.
+> End-to-end automated KPI monitoring & executive reporting system for supply chain performance.
 
-The system transforms raw supply chain order data into structured KPIs and automatically sends executive-level performance summaries via email.
+---
 
-🎯 Problem Statement
+## Executive Summary
 
-Supply chain teams often face:
+Designed and implemented a cloud-connected KPI automation system that transforms raw supply chain order data into structured, executive-level performance insights.
 
-Poor visibility into OTIF performance
+The solution eliminates manual Excel reporting and automatically delivers monthly OTIF performance summaries to stakeholders via email.
 
-Manual Excel-based reporting
+---
 
-Delayed decision-making
+## Business Problem
 
-Inconsistent KPI tracking
+Supply chain teams faced:
 
-No automated stakeholder communication
+- Limited visibility into OTIF performance  
+- Manual Excel-based KPI tracking  
+- Delayed decision-making  
+- Inconsistent performance reporting  
+- No automated executive communication  
 
-The goal of this project was to:
+This created reporting inefficiencies and reduced leadership visibility into operational performance.
 
-Design a structured, cloud-connected, automated KPI monitoring system using proper data modeling and workflow automation.
+---
 
-🏗 System Architecture
-End-to-End Flow
+## Solution Built
 
-Raw CSV Data
+We engineered a fully automated KPI intelligence pipeline that:
 
-PostgreSQL (Local Development)
+- Centralizes raw order-line data into a structured warehouse
+- Cleans and standardizes operational data
+- Computes monthly customer-level performance KPIs
+- Converts structured metrics into executive-readable summaries
+- Automatically distributes performance reports via email
+- Enables repeatable, scalable performance tracking
 
-Data Cleaning & Dimensional Modeling
+This transformed static reporting into a continuous KPI monitoring system.
 
-Migration to NeonDB (Cloud PostgreSQL)
+---
 
-SQL KPI Views
+## What This System Enables
 
-n8n Workflow Automation
+With this solution, stakeholders can now:
 
-Automated Email Summary to Executives
+- Monitor OTIF trends at customer level
+- Identify fulfillment gaps instantly
+- Compare volume vs line-level performance
+- Track on-time vs in-full breakdown
+- Receive automated monthly summaries without manual intervention
+- Scale KPI tracking to additional metrics with minimal changes
 
-🧱 Data Modeling Approach
+The system converts raw operational data into actionable business intelligence.
 
-We implemented Dimensional Modeling (Star Schema) — the industry standard for analytics systems.
+---
 
-Why Dimensional Modeling?
+## KPI Metrics Automated
 
-Separates measurable events (facts) from descriptive attributes (dimensions)
+- **Total Order Lines** – Measures total fulfillment activity volume at order-line level.  
+- **Total Orders** – Tracks distinct customer purchase transactions within the month.  
+- **Line Fill Rate** – Percentage of order lines fulfilled completely (service reliability at line level).  
+- **Volume Fill Rate** – Percentage of total ordered quantity successfully delivered (volume accuracy).  
+- **On-Time %** – Percentage of deliveries made within the promised delivery window.  
+- **In-Full %** – Percentage of orders delivered without quantity shortfall.  
+- **OTIF %** – Percentage of orders delivered both On-Time and In-Full (end-to-end service performance metric).  
 
-Improves query performance
+Example KPI Computation:
 
-Simplifies KPI aggregation
-
-Enables scalable reporting
-
-📊 Fact Tables
-1️⃣ fact_order_line
-
-Stores line-level delivery performance.
-
-Why line-level?
-
-OTIF and Fill Rate are line-level metrics, not order-level.
-
-Example:
-
-1 order = 5 products
-
-4 delivered on time
-
-1 delayed
-
-Order-level view → looks fine
-Line-level view → reveals operational issue
-
-This table captures:
-
-order_id
-
-customer_id
-
-product_id
-
-order_qty
-
-delivery_qty
-
-on_time
-
-in_full
-
-otif
-
-order_placement_date
-
-2️⃣ fact_aggregate
-
-Stores pre-aggregated monthly KPI metrics for performance tracking.
-
-📚 Dimension Tables
-Table	Purpose
-dim_customers	Customer metadata
-dim_products	Product metadata
-dim_targets_orders	KPI targets for benchmarking
-🧹 Data Engineering Steps
-Step A — Staging Layer
-
-Created staging tables:
-
-stg_fact_order_line
-stg_fact_aggregate
-stg_dim_customers
-stg_dim_products
-
-Purpose:
-
-Preserve raw data
-
-Clean before final modeling
-
-Avoid corrupting source data
-
-Step B1 — Clean & Build fact_order_line
-
-Handled:
-
-Invalid bigint conversion errors
-
-Boolean T/F vs TRUE/FALSE mismatches
-
-Column mismatches during migration
-
-Data type corrections
-
-Primary key alignment
-
-Schema restructuring
-
-Result:
-Clean, analytics-ready fact table.
-
-Step B2 — Build fact_aggregate
-
-Aggregated monthly KPIs:
-
-Total Orders
-
-Total Order Lines
-
-Line Fill Rate
-
-Volume Fill Rate
-
-On-Time %
-
-In-Full %
-
-OTIF %
-
-🌐 Cloud Migration (Local → NeonDB)
-
-Migrated from:
-
-Local PostgreSQL (demo DB)
-
-To:
-
-NeonDB (Cloud PostgreSQL)
-
-Challenges solved:
-
-Wrong database connection (demo vs neondb)
-
-Permission and role alignment
-
-Missing views
-
-Data visibility issues
-
-Grant configuration with neondb_owner
-
-📈 KPI View Created
-v_kpi_customer_month
-
-Calculates per-customer monthly KPIs:
-
+```sql
 SELECT 
     date_trunc('month', order_placement_date)::date AS month,
     customer_id,
     COUNT(*) AS total_order_lines,
     COUNT(DISTINCT order_id) AS total_orders,
     AVG(CASE WHEN in_full THEN 1 ELSE 0 END) AS line_fill_rate,
-    SUM(delivery_qty) / NULLIF(SUM(order_qty),0) AS volume_fill_rate,
+    SUM(delivery_qty) / NULLIF(SUM(order_qty), 0) AS volume_fill_rate,
     AVG(CASE WHEN on_time THEN 1 ELSE 0 END) AS on_time_pct,
-    AVG(CASE WHEN in_full THEN 1 ELSE 0 END) AS in_full_pct,
     AVG(CASE WHEN otif THEN 1 ELSE 0 END) AS otif_pct
 FROM fact_order_line
 GROUP BY 1,2;
-🤖 n8n Automation Workflow
-Workflow Design
-
-1️⃣ PostgreSQL Node
-→ Executes KPI view query
-
-2️⃣ Edit Fields Node
-→ Formats and renames output
-
-3️⃣ Function Node
-→ Converts structured data into formatted summary text
-
-4️⃣ Email Node (SMTP via Gmail App Password)
-→ Sends automated executive summary
-
-📩 Automated Executive Email Output
-
-Example:
-
-Monthly Summary
-
-Customer ID    Total Order Lines    Total Orders    Line Fill Rate    Volume Fill Rate    On Time %    In Full %    OTIF %
----------------------------------------------------------------------------------------------------------------------------
-789101         271                  140             0.8376             0.9715              0.7343       0.8376       0.6125
-
-This eliminates manual Excel reporting and ensures stakeholders receive structured insights automatically.
-
-📊 Business Impact
-Metric	Impact
-Manual Reporting	Reduced by 90%
-KPI Visibility	Real-time
-Decision Turnaround	Improved by 40%
-Executive Reporting	Fully Automated
-🧠 Key Learnings
-
-OTIF must be measured at line-level
-
-Dimensional modeling improves scalability
-
-Data type mismatches can break migration
-
-Permissions and DB context matter in cloud DBs
-
-n8n sends one email per row unless aggregated
-
-Function node required for custom formatting
-
-Proper staging prevents data corruption
-
-🛠 Tech Stack
-
-PostgreSQL
-
-NeonDB
-
-SQL
-
-n8n
-
-Gmail SMTP (App Password)
-
-JavaScript (n8n Function Node)
-
-🏁 Final Outcome
-
-A cloud-based, automated supply chain KPI monitoring system that:
-
-Uses proper dimensional modeling
-
-Tracks OTIF and Fill Rate correctly
-
-Runs in cloud PostgreSQL
-
-Sends structured executive summaries
-
-Requires zero manual reporting
